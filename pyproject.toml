@@ -11,16 +11,25 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License"
 ]
-requires-python = ">=3.14"
-dependencies = [
-	"ipykernel",
-	"ipywidgets",
-	"jax[cuda13]",
-	"matplotlib",
-	"numpy",
-	"pandas",
-	"scikit-learn",
-	"tqdm",
+requires-python = "~=3.13.0"
+dependencies=[
+    "equinox>=0.13.6",
+    "flax>=0.12.5",
+    "importlib-resources>=6.5.2",
+    "ipykernel>=7.2.0",
+    "ipywidgets>=8.1.8",
+    "jax[cuda13]>=0.9.1",
+    "jupyter>=1.1.1",
+    "jupyter-collaboration>=4.2.1",
+    "jupytext>=1.19.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.3",
+    "optax>=0.2.6",
+    "pandas>=3.0.1",
+    "scikit-learn>=1.8.0",
+    "tensorflow>=2.21.0",
+    "tensorflow-datasets>=4.9.9",
+    "tqdm>=4.67.3",
 ]
 
 
