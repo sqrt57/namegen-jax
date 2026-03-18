@@ -18,21 +18,25 @@ sys.path.append("..")
 
 # %%
 import os
-from collections import Counter
+from collections import Counter, namedtuple
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import treescope
+treescope.register_as_default()
+
 import jax
 import jax.numpy as jnp
 from jax import jit
 from flax import nnx
+import optax
 jax.config.update("jax_numpy_rank_promotion", "warn")
 jax.config.update('jax_default_device', jax.devices('cpu')[0])
 
-from namegen.dataset import read_uk_towns_and_counties_list, Batch, get_dataset
+from namegen.dataset import read_uk_towns_and_counties_list, Batch, get_dataset, random_split
 from namegen.modeling.tokenizer import CharTokenizer
 from namegen.modeling.model import Model
 from namegen.modeling.train import train_bigram_model, random_bigram_model
@@ -41,6 +45,7 @@ from namegen.modeling.predict import generate, calculate_loss
 # %%
 # %%time
 towns_list = read_uk_towns_and_counties_list('../data')
+towns_list_train, towns_list_validate = random_split(jax.random.key(6236252), towns_list, 0.9)
 
 # %%
 # %%time
@@ -52,21 +57,30 @@ print(tokenizer.indices_to_str(tokenizer.str_to_indices("hello")))
 
 # %%
 # %%time
-dataset = get_dataset(towns_list, tokenizer)
-features = dataset.features
-labels = dataset.labels
-print(dataset.features.shape)
-print(dataset.labels.shape)
+dataset_train = get_dataset(towns_list_train, tokenizer)
+dataset_validate = get_dataset(towns_list_validate, tokenizer)
+features = dataset_train.features
+labels = dataset_train.labels
+print(dataset_train.features.shape)
+print(dataset_train.labels.shape)
+print(dataset_validate.features.shape)
+print(dataset_validate.labels.shape)
 
 # %%
 # %%time
 random_model = random_bigram_model(tokenizer.dict_size())
-model = train_bigram_model(tokenizer.dict_size(), dataset)
+model = train_bigram_model(tokenizer.dict_size(), dataset_train, 0.001)
 model._pair_counts.sum()
 
 # %%
-print(calculate_loss(dataset, random_model).mean())
-print(calculate_loss(dataset, model).mean())
+print(calculate_loss(dataset_train, random_model))
+print(calculate_loss(dataset_validate, random_model))
+print(calculate_loss(dataset_train, model))
+print(calculate_loss(dataset_validate, model))
+
+# %% [markdown]
+# 1. Full set training loss. Random: 3.465734, Bigram: 2.5543
+# 2. Random: train_loss=3.4657345, validate_loss=3.4657328; Bigram: train_loss=2.5545158, validate_loss=2.5540054(unstable)
 
 # %%
 key = jax.random.key(65765767)
@@ -86,6 +100,8 @@ df['1.5'] = generate(key, tokenizer, model, T=1.5)
 df
 
 # %%
+pair_counts = train_bigram_model(tokenizer.dict_size(), dataset_train)._pair_counts \
+            + train_bigram_model(tokenizer.dict_size(), dataset_validate)._pair_counts
 fig = plt.figure(figsize=(16,16))
 ax = fig.add_axes([0,0,1,1])
 ax.imshow(model._pair_counts, cmap='Blues')
@@ -93,5 +109,7 @@ for i in range(dict_size):
     for j in range(dict_size):
         chstr = tokenizer._alphabet[i] + ' ' + tokenizer._alphabet[j]
         ax.text(j, i, chstr, ha="center", va="bottom", color='gray', size='large')
-        ax.text(j, i, model._pair_counts[i, j].item(), ha="center", va="top", color='gray', size='large')
+        ax.text(j, i, pair_counts[i, j].item(), ha="center", va="top", color='gray', size='large')
 ax.axis('off');
+
+# %%

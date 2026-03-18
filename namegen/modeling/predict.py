@@ -34,7 +34,6 @@ def generate(key: jax.Array, tokenizer: CharTokenizer, model: Model, N=20, T=1, 
 
 def calculate_loss(dataset: Batch, model: Model):
     dict_size = model.dict_size()
-    loss_fn = optax.losses.softmax_cross_entropy_with_integer_labels
     pred = model(dataset.features).reshape(-1, dict_size)
     labels = dataset.labels.ravel()
-    return loss_fn(pred[labels >= 0], labels[labels >= 0])
+    return optax.losses.softmax_cross_entropy_with_integer_labels(pred[labels >= 0], labels[labels >= 0]).mean()

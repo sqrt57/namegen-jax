@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from collections import namedtuple
 from pathlib import Path
 
 import pandas as pd
@@ -23,24 +23,29 @@ def read_uk_towns_and_counties_list(data_path: str | Path) -> list[str]:
         lst = result
     return sorted(list(set([s.strip() for s in result if s.strip() != ''])))
 
-@dataclass(frozen=True)
-class Batch:
-    features: jax.Array
-    labels: jax.Array
+def random_split(key: jax.Array, strings: list[str], fraction: float) -> tuple[list[str], list[str]]:
+    nfraction = int(fraction*len(strings))
+    permutation = jax.random.permutation(key, len(strings))
+    strings_permutation = [strings[i] for i in permutation.tolist()]
+    strings_part1 = strings_permutation[:nfraction]
+    strings_part2 = strings_permutation[nfraction:]
+    return (strings_part1, strings_part2)
+
+Batch = namedtuple('Batch', 'features labels')
 
 def get_dataset(strings: list[str], tokenizer: CharTokenizer) -> Batch:
+    max_length = max(len(s) for s in strings) + 1
     features = []
     labels = []
     zero = jnp.zeros(1, dtype=jnp.int32)
     for string in strings:
         word = tokenizer.str_to_indices(string)
-        word_features = jnp.concat((zero, word))
-        word_labels = jnp.concat((word, zero))
+        word_len = word.shape[0]
+        zeros = jnp.zeros(max_length-word_len-1, dtype=jnp.int32)
+        word_features = jnp.concat((zero, word, zeros))
+        word_labels = jnp.concat((word, zero, zeros-1))
         features.append(word_features)
         labels.append(word_labels)
-    max_length = max(f.shape[0] for f in features)
-    features = [jnp.concat((f, jnp.zeros(max_length-f.shape[0], dtype=jnp.int32))) for f in features]
-    labels = [jnp.concat((l, jnp.zeros(max_length-l.shape[0], dtype=jnp.int32)-1)) for l in labels]
     features = jnp.stack(features, axis=0)
     labels = jnp.stack(labels, axis=0)
     return Batch(features, labels)
