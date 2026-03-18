@@ -110,6 +110,4 @@ for i in range(dict_size):
         chstr = tokenizer._alphabet[i] + ' ' + tokenizer._alphabet[j]
         ax.text(j, i, chstr, ha="center", va="bottom", color='gray', size='large')
         ax.text(j, i, pair_counts[i, j].item(), ha="center", va="top", color='gray', size='large')
-ax.axis('off');
-
-# %%
+ax.axis('off')

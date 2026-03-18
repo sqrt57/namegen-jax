@@ -1,7 +1,9 @@
 from collections import namedtuple
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+
 import jax
 import jax.numpy as jnp
 
@@ -34,18 +36,14 @@ def random_split(key: jax.Array, strings: list[str], fraction: float) -> tuple[l
 Batch = namedtuple('Batch', 'features labels')
 
 def get_dataset(strings: list[str], tokenizer: CharTokenizer) -> Batch:
-    max_length = max(len(s) for s in strings) + 1
-    features = []
-    labels = []
-    zero = jnp.zeros(1, dtype=jnp.int32)
-    for string in strings:
-        word = tokenizer.str_to_indices(string)
+    nlength = max(len(s) for s in strings) + 1
+    ndataset = len(strings)
+    words = [tokenizer.str_to_indices(string) for string in strings]
+    features = np.zeros((ndataset, nlength), dtype=jnp.int32)
+    labels = np.zeros((ndataset, nlength), dtype=jnp.int32)-1
+    for i, word in enumerate(words):
         word_len = word.shape[0]
-        zeros = jnp.zeros(max_length-word_len-1, dtype=jnp.int32)
-        word_features = jnp.concat((zero, word, zeros))
-        word_labels = jnp.concat((word, zero, zeros-1))
-        features.append(word_features)
-        labels.append(word_labels)
-    features = jnp.stack(features, axis=0)
-    labels = jnp.stack(labels, axis=0)
-    return Batch(features, labels)
+        features[i, 1:word_len+1] = word
+        labels[i, 0:word_len] = word
+        labels[i, word_len] = 0
+    return Batch(jnp.array(features), jnp.array(labels))
